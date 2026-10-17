@@ -127,7 +127,7 @@ fun RegionPickerRoute(onPick: (Partition) -> Unit, onBack: () -> Unit) {
                         Box(
                             modifier = Modifier
                                 .size(36.dp)
-                                .background(Color(part.tint.toULong()), RoundedCornerShape(8.dp)),
+                                .background(Color(part.tint), RoundedCornerShape(8.dp)),
                             contentAlignment = Alignment.Center,
                         ) {
                             Text(part.initial)
