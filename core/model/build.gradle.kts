@@ -29,6 +29,11 @@ kotlin {
         val jvmMain by getting {
             dependsOn(jvmShared)
         }
+        val jvmTest by getting {
+            dependencies {
+                implementation(kotlin("test"))
+            }
+        }
 
     }
 }

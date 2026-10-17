@@ -151,8 +151,8 @@ class BiliClient(
             "https://api.bilibili.com/x/web-interface/wbi/search/type",
             mutableMapOf("search_type" to type, "keyword" to keyword, "page" to page.toString()),
             sign = true,
-        ).data ?: return@api SearchPage(emptyList(), false, blocked = true)
-        if (data.has("v_voucher")) return@api SearchPage(emptyList(), false, blocked = true)
+        ).data ?: return@api SearchPage(emptyList(), hasMore = false, blocked = true)
+        if (data.has("v_voucher")) return@api SearchPage(emptyList(), hasMore = false, blocked = true)
         val raw = data.opt("result")
         val items = when (raw) {
             is JSONArray -> raw.objects().mapNotNull { if (live) parseLive(it) else parseSearch(it) }
@@ -160,7 +160,7 @@ class BiliClient(
         }
         val total = data.int("numResults")
         val hasMore = items.isNotEmpty() && (if (total > 0) page * pageSize < total else items.size >= pageSize)
-        SearchPage(items, hasMore)
+        SearchPage(items, hasMore = hasMore)
     }
 
     suspend fun hotSearch(): Result<List<String>> = api {

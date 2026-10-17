@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -34,7 +33,6 @@ import app.bilidesk.core.designsystem.appViewModel
 import app.bilidesk.core.model.Partition
 import app.bilidesk.core.model.PartitionCatalog
 import app.bilidesk.core.model.VideoItem
-import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 
 class RegionViewModel(private val tid: Int) : ViewModel() {
@@ -78,11 +76,7 @@ fun RegionPickerRoute(onPick: (Partition) -> Unit, onBack: () -> Unit) {
                 ListItem(
                     headlineContent = { Text(part.name) },
                     leadingContent = {
-                        if (part.iconUrl.isNotBlank()) {
-                            AsyncImage(part.iconUrl, part.name, Modifier.size(36.dp))
-                        } else {
-                            Text(part.initial)
-                        }
+                        Text(part.initial)
                     },
                     modifier = Modifier.clickable { onPick(part) },
                 )
