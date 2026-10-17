@@ -212,7 +212,15 @@ fun PlayerRoute(
     var chrome by remember { mutableStateOf(true) }
     var hint by remember { mutableStateOf<String?>(null) }
     var ended by remember { mutableStateOf(false) }
-    var volume by remember { mutableFloatStateOf(1f) }
+    val settings by AppGraph.repo.settings.collectAsState()
+    var volume by remember { mutableFloatStateOf(settings.playerVolume.coerceIn(0f, 1f)) }
+    fun setVolume(next: Float) {
+        val v = next.coerceIn(0f, 1f)
+        volume = v
+        engine.volume = v
+        AppGraph.repo.updateSettings { it.copy(playerVolume = v) }
+    }
+    LaunchedEffect(Unit) { engine.volume = volume }
     var volumeOpen by remember { mutableStateOf(false) }
     var areaOpen by remember { mutableStateOf(false) }
     var areaDraft by remember { mutableFloatStateOf(25f) }
@@ -245,7 +253,6 @@ fun PlayerRoute(
     var draft by remember { mutableStateOf("") }
     var downloading by remember { mutableStateOf(false) }
     var attempt by remember { mutableIntStateOf(0) }
-    val settings by AppGraph.repo.settings.collectAsState()
     val form = LocalWindowForm.current
     val desktop = isDesktopHost()
     val brightnessOk = canControlBrightness()
@@ -764,18 +771,15 @@ fun PlayerRoute(
                         true
                     }
                     Key.DirectionUp -> {
-                        volume = (volume + 0.1f).coerceIn(0f, 1f)
-                        engine.volume = volume
+                        setVolume(volume + 0.1f)
                         true
                     }
                     Key.DirectionDown -> {
-                        volume = (volume - 0.1f).coerceIn(0f, 1f)
-                        engine.volume = volume
+                        setVolume(volume - 0.1f)
                         true
                     }
                     Key.M -> {
-                        volume = if (volume == 0f) 0.8f else 0f
-                        engine.volume = volume
+                        setVolume(if (volume == 0f) 0.8f else 0f)
                         true
                     }
                     Key.F -> {
@@ -967,8 +971,7 @@ fun PlayerRoute(
                                                 showHint("亮度 ${(next * 100).toInt()}", linger = false)
                                             }
                                             3 -> {
-                                                volume = (startVolume - dy / size.height).coerceIn(0f, 1f)
-                                                engine.volume = volume
+                                                setVolume(startVolume - dy / size.height)
                                                 showHint("音量 ${(volume * 100).toInt()}", linger = false)
                                             }
                                         }
@@ -985,8 +988,7 @@ fun PlayerRoute(
                                             val event = awaitPointerEvent()
                                             if (event.type == PointerEventType.Scroll) {
                                                 val dy = event.changes.first().scrollDelta.y
-                                                volume = (volume - dy * 0.05f).coerceIn(0f, 1f)
-                                                engine.volume = volume
+                                                setVolume(volume - dy * 0.05f)
                                             }
                                         }
                                     }
@@ -1271,10 +1273,7 @@ fun PlayerRoute(
             if (showChrome && volumeOpen) {
                 Slider(
                     value = volume,
-                    onValueChange = {
-                        volume = it
-                        engine.volume = it
-                    },
+                    onValueChange = { setVolume(it) },
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .padding(start = 24.dp, end = 24.dp, bottom = 64.dp)
