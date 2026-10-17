@@ -1,0 +1,37 @@
+# .NET / Visual Studio
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+
+# 发布产物
+发布包/
+
+# Android / Kotlin / Compose
+.gradle/
+.kotlin/
+.idea/
+*.iml
+.DS_Store
+**/build/
+local.properties
+*.apk
+*.aab
+.cxx/
+captures/
+
+# 内部开发笔记(项目约定: 不进仓库)
+memory/
+长期记忆/
+
+# WorkBuddy 会话数据(个人笔记, 不开源)
+.workbuddy/
+
+# 运行期临时文件
+*.log
+*.tmp
+
+# 本地探针(离线复现/验证用, 不进仓库)
+.probes/
