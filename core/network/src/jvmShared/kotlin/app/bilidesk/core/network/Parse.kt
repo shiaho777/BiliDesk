@@ -12,7 +12,10 @@ import app.bilidesk.core.model.formatMonthDayHour
 internal fun parseVideo(e: JSONObject): VideoItem? {
     val bvid = e.str("bvid")
     if (bvid.isBlank()) return null
-    val owner = e.obj("owner")
+    val owner = e.obj("owner") ?: e.obj("author")
+    val authorName = owner?.str("name").orEmpty().ifBlank {
+        if (e.obj("author") == null) e.str("author") else ""
+    }
     val stat = e.obj("stat")
     val duration = e.int("duration")
     return VideoItem(
@@ -21,7 +24,7 @@ internal fun parseVideo(e: JSONObject): VideoItem? {
         cid = e.cidOrHistory(),
         title = e.str("title").stripHtml(),
         cover = normalizeUrl(e.str("pic").ifBlank { e.str("cover") }),
-        author = owner?.str("name").orEmpty().ifBlank { e.str("author") },
+        author = authorName,
         ownerMid = owner?.lng("mid") ?: e.lng("mid"),
         ownerFace = normalizeUrl(owner?.str("face").orEmpty()),
         durationText = if (duration > 0) formatSeconds(duration) else e.str("duration").ifBlank { e.str("length") },
