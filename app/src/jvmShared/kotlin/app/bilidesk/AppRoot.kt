@@ -68,6 +68,7 @@ import app.bilidesk.feature.player.PlayerRoute
 import app.bilidesk.feature.region.RegionPickerRoute
 import app.bilidesk.feature.region.RegionRoute
 import app.bilidesk.feature.search.SearchRoute
+import app.bilidesk.feature.search.SeasonRoute
 import app.bilidesk.feature.settings.SettingsRoute
 import app.bilidesk.feature.space.SpaceRoute
 
@@ -77,6 +78,7 @@ sealed interface Dest {
     data object Mine : Dest
     data object Settings : Dest
     data class Search(val keyword: String) : Dest
+    data class Bangumi(val seasonId: Long, val title: String) : Dest
     data object Regions : Dest
     data class RegionRank(val tid: Int, val name: String) : Dest
     data class Space(val mid: Long) : Dest
@@ -153,6 +155,7 @@ private fun encode(dest: Dest): String = when (dest) {
     Dest.Mine -> "mine"
     Dest.Settings -> "settings"
     is Dest.Search -> "search\t${dest.keyword.oneLine()}"
+    is Dest.Bangumi -> "bangumi\t${dest.seasonId}\t${dest.title.oneLine()}"
     Dest.Regions -> "regions"
     is Dest.RegionRank -> "region\t${dest.tid}\t${dest.name.oneLine()}"
     is Dest.Space -> "space\t${dest.mid}"
@@ -198,6 +201,7 @@ private fun decode(line: String): Dest {
         "mine" -> Dest.Mine
         "settings" -> Dest.Settings
         "search" -> Dest.Search(parts.getOrElse(1) { "" })
+        "bangumi" -> Dest.Bangumi(parts.getOrNull(1)?.toLongOrNull() ?: 0L, parts.getOrElse(2) { "" })
         "regions" -> Dest.Regions
         "region" -> Dest.RegionRank(parts.getOrNull(1)?.toIntOrNull() ?: 0, parts.getOrElse(2) { "分区" })
         "space" -> Dest.Space(parts.getOrNull(1)?.toLongOrNull() ?: 0L)
@@ -488,7 +492,21 @@ private fun Route(
             onOpenAuthor = { onPush(Dest.Space(697238372L)) },
             onOpenDisclaimer = onRereadDisclaimer,
         )
-        is Dest.Search -> SearchRoute(dest.keyword, onPop, ::openVideo, ::openAuthor)
+        is Dest.Search -> SearchRoute(
+            dest.keyword,
+            onPop,
+            ::openVideo,
+            ::openAuthor,
+            onBangumi = { onPush(Dest.Bangumi(it.seasonId, it.title)) },
+        )
+        is Dest.Bangumi -> SeasonRoute(
+            dest.seasonId,
+            dest.title,
+            onPop,
+            onPlay = { ep, seasonTitle ->
+                onPush(Dest.Play(bvid = ep.bvid, cid = ep.cid, title = "$seasonTitle - ${ep.title}"))
+            },
+        )
         Dest.Regions -> RegionPickerRoute(
             onPick = { onPush(Dest.RegionRank(it.tid, it.name)) },
             onBack = onPop,
