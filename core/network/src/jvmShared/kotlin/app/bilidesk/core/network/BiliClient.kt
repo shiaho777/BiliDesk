@@ -1,8 +1,11 @@
 package app.bilidesk.core.network
 
 import app.bilidesk.core.model.AppSettings
+import app.bilidesk.core.model.BangumiDetail
+import app.bilidesk.core.model.BangumiItem
 import app.bilidesk.core.model.Comment
 import app.bilidesk.core.model.CommentPage
+import app.bilidesk.core.model.ContentKind
 import app.bilidesk.core.model.Danmaku
 import app.bilidesk.core.model.DynamicPage
 import app.bilidesk.core.model.FavFolder
@@ -28,6 +31,9 @@ import app.bilidesk.core.model.ViewChapter
 import app.bilidesk.core.model.normalizeUrl
 import app.bilidesk.core.model.epochMs
 import app.bilidesk.core.model.ioDispatcher
+import app.bilidesk.core.model.searchReferer
+import app.bilidesk.core.model.searchType
+import app.bilidesk.core.model.signed
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
@@ -119,6 +125,23 @@ class BiliClient(
         "list",
     )
 
+    suspend fun regionFeed(tid: Int, displayId: Int): Result<RegionFeedDecode> = api {
+        ensureBuvid()
+        val resp = get(
+            "https://api.bilibili.com/x/web-interface/region/feed/rcmd",
+            mapOf(
+                "display_id" to displayId.coerceAtLeast(1).toString(),
+                "request_cnt" to "20",
+                "from_region" to tid.toString(),
+                "device" to "web",
+                "plat" to "30",
+            ),
+        )
+        val page = decodeRegionFeed(resp.code, resp.message, resp.data)
+        if (!page.ok) error(page.error ?: "加载失败")
+        page
+    }
+
     suspend fun recommend(brush: Int = 1): Result<List<VideoItem>> = api {
         ensureBuvid()
         val cursor = brush.coerceAtLeast(1).toString()
@@ -143,25 +166,70 @@ class BiliClient(
         items
     }.recoverCatching { popular(1).getOrThrow() }
 
-    suspend fun search(keyword: String, page: Int, live: Boolean = false): Result<SearchPage> = api {
+    suspend fun search(
+        keyword: String,
+        page: Int,
+        kind: ContentKind = ContentKind.Video,
+    ): Result<SearchPage> = api {
         ensureBuvid()
-        val type = if (live) "live_room" else "video"
-        val pageSize = if (live) 40 else 20
-        val data = get(
-            "https://api.bilibili.com/x/web-interface/wbi/search/type",
-            mutableMapOf("search_type" to type, "keyword" to keyword, "page" to page.toString()),
-            sign = true,
-        ).data ?: return@api SearchPage(emptyList(), hasMore = false, blocked = true)
-        if (data.has("v_voucher")) return@api SearchPage(emptyList(), hasMore = false, blocked = true)
-        val raw = data.opt("result")
-        val items = when (raw) {
-            is JSONArray -> raw.objects().mapNotNull { if (live) parseLive(it) else parseSearch(it) }
-            else -> emptyList()
+        val url = if (kind.signed()) {
+            "https://api.bilibili.com/x/web-interface/wbi/search/type"
+        } else {
+            "https://api.bilibili.com/x/web-interface/search/type"
         }
-        val total = data.int("numResults")
-        val hasMore = items.isNotEmpty() && (if (total > 0) page * pageSize < total else items.size >= pageSize)
-        SearchPage(items, hasMore = hasMore)
+        val resp = get(
+            url,
+            mutableMapOf(
+                "search_type" to kind.searchType(),
+                "keyword" to keyword,
+                "page" to page.toString(),
+            ),
+            sign = kind.signed(),
+            referer = kind.searchReferer() ?: REFERER,
+        )
+        if (resp.code != 0) {
+            if (resp.code == -352 || resp.code == -412 || resp.code == -403) {
+                return@api SearchPage(emptyList(), emptyList(), false, blocked = true)
+            }
+            error(resp.message ?: "搜索失败")
+        }
+        val extraFt = if (kind == ContentKind.Bangumi) mediaFt(keyword, page) else emptyList()
+        if (resp.data?.has("v_voucher") == true) {
+            return@api if (kind == ContentKind.Bangumi) {
+                decodeSearchSuccess(kind, page, resp.data, extraFt).copy(blocked = true)
+            } else {
+                SearchPage(emptyList(), emptyList(), false, blocked = true)
+            }
+        }
+        decodeSearchSuccess(kind, page, resp.data, extraFt)
     }
+
+    suspend fun bangumiDetail(seasonId: Long): Result<BangumiDetail> = api {
+        if (seasonId <= 0) error("没有番剧号")
+        ensureBuvid()
+        val resp = get(
+            "https://api.bilibili.com/pgc/view/web/season",
+            mapOf("season_id" to seasonId.toString()),
+            bodyKey = "result",
+        )
+        if (resp.code != 0 || resp.data == null) error(resp.message ?: "加载选集失败")
+        parseBangumiDetail(seasonId, resp.data)
+    }
+
+    private suspend fun mediaFt(keyword: String, page: Int): List<BangumiItem> = runCatching {
+        val resp = get(
+            "https://api.bilibili.com/x/web-interface/search/type",
+            mutableMapOf(
+                "search_type" to "media_ft",
+                "keyword" to keyword,
+                "page" to page.toString(),
+            ),
+            sign = false,
+            referer = "https://search.bilibili.com/",
+        )
+        if (resp.code != 0) emptyList()
+        else resp.data?.arr("result")?.objects().orEmpty().mapNotNull(::parseBangumiItem)
+    }.getOrDefault(emptyList())
 
     suspend fun hotSearch(): Result<List<String>> = api {
         val data = get(
@@ -1382,6 +1450,7 @@ class BiliClient(
         sign: Boolean = false,
         referer: String = REFERER,
         retry: Boolean = true,
+        bodyKey: String = "data",
     ): Resp {
         val ps = params.toMutableMap()
         if (sign) {
@@ -1400,9 +1469,9 @@ class BiliClient(
         if (sign && retry && code == -403) {
             wbiImg = null
             wbiSub = null
-            return get(url, params, sign = true, referer = referer, retry = false)
+            return get(url, params, sign = true, referer = referer, retry = false, bodyKey = bodyKey)
         }
-        val data = root.opt("data")
+        val data = root.opt(bodyKey)
         val obj = when (data) {
             is JSONObject -> data
             is JSONArray -> JSONObject().put("list", data)

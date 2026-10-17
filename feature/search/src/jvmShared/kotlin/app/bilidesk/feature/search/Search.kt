@@ -40,6 +40,7 @@ import app.bilidesk.core.data.AppGraph
 import app.bilidesk.core.designsystem.LoadBox
 import app.bilidesk.core.designsystem.VideoGrid
 import app.bilidesk.core.designsystem.appViewModel
+import app.bilidesk.core.model.ContentKind
 import app.bilidesk.core.model.UrlHit
 import app.bilidesk.core.model.UrlParser
 import app.bilidesk.core.model.VideoItem
@@ -82,9 +83,9 @@ class SearchViewModel(initial: String) : ViewModel() {
         loading = true
         error = null
         val q = keyword
-        val isLive = live
+        val kind = if (live) ContentKind.Live else ContentKind.Video
         viewModelScope.launch {
-            val result = AppGraph.repo.search(q, page, isLive)
+            val result = AppGraph.repo.search(q, page, kind)
             loading = false
             result.onSuccess { pageData ->
                 items = if (reset) pageData.items else items + pageData.items
