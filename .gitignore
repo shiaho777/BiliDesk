@@ -35,3 +35,6 @@ memory/
 
 # 本地探针(离线复现/验证用, 不进仓库)
 .probes/
+
+# Isolated git worktrees
+.worktrees/
