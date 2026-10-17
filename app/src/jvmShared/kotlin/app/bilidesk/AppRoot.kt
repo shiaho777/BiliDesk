@@ -53,6 +53,7 @@ import app.bilidesk.core.data.AppGraph
 import app.bilidesk.core.data.exitApp
 import app.bilidesk.core.model.DISCLAIMER_VERSION
 import app.bilidesk.core.model.VideoItem
+import app.bilidesk.core.model.bangumiPlayTitle
 import app.bilidesk.feature.dynamic.DynamicRoute
 import app.bilidesk.feature.home.HomeRoute
 import app.bilidesk.feature.library.CacheRoute
@@ -504,7 +505,7 @@ private fun Route(
             dest.title,
             onPop,
             onPlay = { ep, seasonTitle ->
-                onPush(Dest.Play(bvid = ep.bvid, cid = ep.cid, title = "$seasonTitle - ${ep.title}"))
+                onPush(Dest.Play(bvid = ep.bvid, cid = ep.cid, title = bangumiPlayTitle(seasonTitle, ep.title, ep.longTitle)))
             },
         )
         Dest.Regions -> RegionPickerRoute(

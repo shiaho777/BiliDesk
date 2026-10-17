@@ -31,6 +31,7 @@ import app.bilidesk.core.designsystem.LoadBox
 import app.bilidesk.core.designsystem.appViewModel
 import app.bilidesk.core.model.BangumiDetail
 import app.bilidesk.core.model.BangumiEpisode
+import app.bilidesk.core.model.bangumiEpisodeDisplayTitle
 import app.bilidesk.core.model.formatSeconds
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
@@ -110,7 +111,7 @@ fun SeasonRoute(
                     ListItem(
                         headlineContent = {
                             Text(
-                                listOf(ep.title, ep.longTitle).filter { it.isNotBlank() }.joinToString(" "),
+                                bangumiEpisodeDisplayTitle(ep.title, ep.longTitle),
                                 color = if (latest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,

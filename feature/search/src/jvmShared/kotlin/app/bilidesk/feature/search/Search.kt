@@ -60,6 +60,9 @@ import app.bilidesk.core.model.UrlHit
 import app.bilidesk.core.model.UrlParser
 import app.bilidesk.core.model.VideoItem
 import app.bilidesk.core.model.searchEmptyMessage
+import app.bilidesk.core.model.searchKindSwitch
+import app.bilidesk.core.model.searchKindSwitchShouldLoad
+import app.bilidesk.core.model.searchPageError
 import coil3.compose.AsyncImage
 import kotlinx.coroutines.launch
 
@@ -84,7 +87,12 @@ class SearchViewModel(initial: String) : ViewModel() {
 
     fun search(word: String = keyword) {
         val q = word.trim()
-        if (q.isEmpty()) return
+        if (!searchKindSwitchShouldLoad(q)) {
+            loadGen += 1
+            loading = false
+            searched = false
+            return
+        }
         keyword = q
         searched = true
         page = 1
@@ -95,12 +103,16 @@ class SearchViewModel(initial: String) : ViewModel() {
     fun selectKind(next: ContentKind) {
         if (next == kind) return
         AppGraph.repo.updateSettings { it.copy(lastSearchKind = next) }
+        val switched = searchKindSwitch(keyword, loadGen, searched)
+        loadGen = switched.loadGen
         kind = next
         items = emptyList()
         bangumiItems = emptyList()
         error = null
         hasMore = false
-        if (searched) loading = true
+        loading = switched.loading
+        searched = switched.searched
+        if (switched.loading) search()
     }
 
     fun loadMore() {
@@ -135,16 +147,7 @@ class SearchViewModel(initial: String) : ViewModel() {
                     }
                 }
                 hasMore = pageData.hasMore
-                val empty = if (searchKind == ContentKind.Bangumi) {
-                    bangumiItems.isEmpty()
-                } else {
-                    items.isEmpty()
-                }
-                error = when {
-                    pageData.blocked -> "搜索被风控拦截，过一会儿再试"
-                    empty -> searchEmptyMessage(searchKind)
-                    else -> null
-                }
+                error = searchPageError(pageData.blocked)
             }.onFailure { error = it.message }
         }
     }
@@ -173,7 +176,6 @@ fun SearchRoute(
         val hit = UrlParser.parse(initial)
         if (hit !is UrlHit.Keyword) submit(initial)
     }
-    LaunchedEffect(vm.kind) { if (vm.searched) vm.search() }
     Scaffold(
         topBar = {
             BiliBackHeader("搜索", onBack)

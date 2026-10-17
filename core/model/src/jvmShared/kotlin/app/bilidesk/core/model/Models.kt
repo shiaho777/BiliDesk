@@ -405,6 +405,12 @@ data class BangumiDetail(
     val episodes: List<BangumiEpisode>,
 )
 
+fun bangumiEpisodeDisplayTitle(title: String, longTitle: String): String =
+    listOf(title, longTitle).filter { it.isNotBlank() }.joinToString(" ")
+
+fun bangumiPlayTitle(seasonTitle: String, title: String, longTitle: String): String =
+    "$seasonTitle - ${bangumiEpisodeDisplayTitle(title, longTitle)}"
+
 data class SearchPage(
     val items: List<VideoItem>,
     val bangumiItems: List<BangumiItem> = emptyList(),
