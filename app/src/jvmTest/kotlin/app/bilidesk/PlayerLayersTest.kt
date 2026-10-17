@@ -91,4 +91,13 @@ class PlayerLayersTest {
         val play = Dest.Play(bvid = "BV1")
         assertTrue(composeOverlayLayer(overlay = null, held = play))
     }
+
+    @Test
+    fun bangumiSeasonIsNotPlayerOverlay() {
+        val season = Dest.Bangumi(8, "剧")
+        assertFalse(season.isPlayerLayer())
+        val (base, overlay) = playerLayers(listOf(Dest.Home, Dest.Search("咒术"), season))
+        assertEquals(season, base)
+        assertNull(overlay)
+    }
 }

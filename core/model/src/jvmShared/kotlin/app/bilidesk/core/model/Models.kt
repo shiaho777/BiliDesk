@@ -377,8 +377,43 @@ object SponsorCategories {
     }
 }
 
+data class BangumiItem(
+    val seasonId: Long,
+    val mediaId: Long = 0,
+    val title: String = "",
+    val cover: String = "",
+    val badge: String = "",
+    val indexShow: String = "",
+    val seasonTypeName: String = "",
+)
+
+data class BangumiEpisode(
+    val epId: Long,
+    val bvid: String,
+    val cid: Long,
+    val title: String,
+    val longTitle: String = "",
+    val cover: String = "",
+    val durationSec: Int = 0,
+)
+
+data class BangumiDetail(
+    val seasonId: Long,
+    val title: String,
+    val cover: String,
+    val evaluate: String = "",
+    val episodes: List<BangumiEpisode>,
+)
+
+fun bangumiEpisodeDisplayTitle(title: String, longTitle: String): String =
+    listOf(title, longTitle).filter { it.isNotBlank() }.joinToString(" ")
+
+fun bangumiPlayTitle(seasonTitle: String, title: String, longTitle: String): String =
+    "$seasonTitle - ${bangumiEpisodeDisplayTitle(title, longTitle)}"
+
 data class SearchPage(
     val items: List<VideoItem>,
+    val bangumiItems: List<BangumiItem> = emptyList(),
     val hasMore: Boolean,
     val blocked: Boolean = false,
 )
@@ -393,7 +428,7 @@ data class QrTicket(val url: String, val key: String)
 
 enum class QrStatus { Waiting, Scanned, Success, Expired, Failed }
 
-data class Partition(val name: String, val tid: Int, val iconUrl: String) {
+data class Partition(val name: String, val tid: Int, val tint: Long = 0xFFFB7299) {
     val initial: String get() = name.take(1)
 }
 
@@ -454,6 +489,8 @@ data class AppSettings(
     val acceptedDisclaimerVersion: Int = 0,
     /** 桌面端：点窗口关闭键时收进托盘。默认开。 */
     val closeToTray: Boolean = true,
+    val playerVolume: Float = 0.8f,
+    val lastSearchKind: ContentKind = ContentKind.Video,
 ) {
     val disclaimerAccepted: Boolean get() = acceptedDisclaimerVersion >= DISCLAIMER_VERSION
 }
@@ -497,24 +534,35 @@ data class CacheEntry(
 
 object PartitionCatalog {
     val all: List<Partition> = listOf(
-        Partition("电影", 23, "https://i0.hdslb.com/bfs/archive/137edde9deb7dfcdf610ed2d1ec63bae6ef3ba0a.png"),
-        Partition("动画", 1, "https://i0.hdslb.com/bfs/archive/9b3bb8cfc8d87809ffa409bc65def8d8c3eaf72b.png"),
-        Partition("音乐", 3, "https://i0.hdslb.com/bfs/archive/3a99c51d00038ced3989686b6f3c49d01aa34207.png"),
-        Partition("娱乐", 5, "https://i0.hdslb.com/bfs/archive/a9bcb4cb7e216c2ea28ba3dc10acd2d210f739bd.png"),
-        Partition("资讯", 202, "https://i0.hdslb.com/bfs/legacy/d71e70e1bfcb7b27ffe88e6cb82868c68b084464.png"),
-        Partition("时尚美妆", 155, "https://i0.hdslb.com/bfs/archive/1842562be5ded346d79312b24fafedbc1d78c8e2.png"),
-        Partition("生活", 160, "https://i0.hdslb.com/bfs/archive/50731fc4b9ec487ef2e3861a97e0eb4671b7bcef.png"),
-        Partition("电视剧", 11, "https://i0.hdslb.com/bfs/archive/30779a6904875754762e666b7076014528ef4834.png"),
-        Partition("游戏", 4, "https://i0.hdslb.com/bfs/archive/9c88ce1adaecf31e27121bdbb5a29824d655d0a6.png"),
-        Partition("舞蹈", 129, "https://i0.hdslb.com/bfs/archive/4769a6faa9ccfde4a029eca36b979bac486afd14.png"),
-        Partition("知识", 36, "https://i0.hdslb.com/bfs/archive/d5bb279936dbe661f958683231566214056987b2.png"),
-        Partition("美食", 211, "https://i0.hdslb.com/bfs/archive/0f5e21f08616f9c02d706433ba1c00bd5b889c7b.png"),
-        Partition("体育运动", 234, "https://i0.hdslb.com/bfs/feed-admin/56a67fa38d8d7378ab4154307d26cffce2d1ae3f.png"),
-        Partition("纪录片", 177, "https://i0.hdslb.com/bfs/archive/884a644c6bb4b8bb16f9746ef35fbaba396e0b8c.png"),
-        Partition("鬼畜", 119, "https://i0.hdslb.com/bfs/archive/de50290b11c65108eb70766fa887032b948d2e4b.png"),
-        Partition("影视", 181, "https://i0.hdslb.com/bfs/archive/f90bb1ef59630ad9765486c6088a4944b96e88a3.png"),
-        Partition("科技数码", 188, "https://i0.hdslb.com/bfs/feed-admin/4a687a86b49feea68d423fd1bf2c461acfe59b70.png"),
-        Partition("汽车", 223, "https://i0.hdslb.com/bfs/feed-admin/1515d944550494abf81b552a84484dce80287242.png"),
-        Partition("动物圈", 217, "https://i0.hdslb.com/bfs/archive/9f3303b20e12ac874c379da09bca9ce4d0b2f88c.png"),
+        Partition("动画", 1005, 0xFF6D69E4),
+        Partition("游戏", 1008, 0xFF57D587),
+        Partition("鬼畜", 1007, 0xFFFB813A),
+        Partition("音乐", 1003),
+        Partition("舞蹈", 1004),
+        Partition("影视", 1001),
+        Partition("娱乐", 1002),
+        Partition("知识", 1010),
+        Partition("科技数码", 1012),
+        Partition("资讯", 1009),
+        Partition("美食", 1020),
+        Partition("小剧场", 1021),
+        Partition("汽车", 1013),
+        Partition("时尚美妆", 1014),
+        Partition("体育运动", 1018),
+        Partition("动物", 1024),
+        Partition("vlog", 1029),
+        Partition("绘画", 1006),
+        Partition("人工智能", 1011),
+        Partition("家装房产", 1015),
+        Partition("户外潮流", 1016),
+        Partition("健身", 1017),
+        Partition("手工", 1019),
+        Partition("旅游出行", 1022),
+        Partition("三农", 1023),
+        Partition("亲子", 1025),
+        Partition("健康", 1026),
+        Partition("情感", 1027),
+        Partition("生活兴趣", 1030),
+        Partition("生活经验", 1031),
     )
 }

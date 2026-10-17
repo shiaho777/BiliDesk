@@ -1,8 +1,10 @@
 package app.bilidesk.core.data
 
 import app.bilidesk.core.model.AppSettings
+import app.bilidesk.core.model.BangumiDetail
 import app.bilidesk.core.model.Comment
 import app.bilidesk.core.model.CommentPage
+import app.bilidesk.core.model.ContentKind
 import app.bilidesk.core.model.Danmaku
 import app.bilidesk.core.model.DynamicPage
 import app.bilidesk.core.model.FavFolder
@@ -29,6 +31,7 @@ import app.bilidesk.core.model.ViewChapter
 import app.bilidesk.core.network.BiliClient
 import app.bilidesk.core.network.CdnPicker
 import app.bilidesk.core.network.CdnStatus
+import app.bilidesk.core.network.RegionFeedDecode
 import kotlinx.coroutines.flow.StateFlow
 
 interface BiliRepository {
@@ -43,8 +46,10 @@ interface BiliRepository {
     suspend fun popular(page: Int): Result<List<VideoItem>>
     suspend fun ranking(): Result<List<VideoItem>>
     suspend fun regionRank(rid: Int): Result<List<VideoItem>>
+    suspend fun regionFeed(tid: Int, displayId: Int): Result<RegionFeedDecode>
     suspend fun recommend(brush: Int = 1): Result<List<VideoItem>>
-    suspend fun search(keyword: String, page: Int, live: Boolean = false): Result<SearchPage>
+    suspend fun search(keyword: String, page: Int, kind: ContentKind = ContentKind.Video): Result<SearchPage>
+    suspend fun bangumiDetail(seasonId: Long): Result<BangumiDetail>
     suspend fun hotSearch(): Result<List<String>>
     suspend fun video(bvid: String): Result<VideoDetail>
     suspend fun description(bvid: String): Result<String>
@@ -119,8 +124,10 @@ class BiliRepositoryImpl(
     override suspend fun popular(page: Int) = client.popular(page)
     override suspend fun ranking() = client.ranking()
     override suspend fun regionRank(rid: Int) = client.regionRank(rid)
+    override suspend fun regionFeed(tid: Int, displayId: Int) = client.regionFeed(tid, displayId)
     override suspend fun recommend(brush: Int) = client.recommend(brush)
-    override suspend fun search(keyword: String, page: Int, live: Boolean) = client.search(keyword, page, live)
+    override suspend fun search(keyword: String, page: Int, kind: ContentKind) = client.search(keyword, page, kind)
+    override suspend fun bangumiDetail(seasonId: Long) = client.bangumiDetail(seasonId)
     override suspend fun hotSearch() = client.hotSearch()
     override suspend fun video(bvid: String) = client.video(bvid)
     override suspend fun description(bvid: String) = client.description(bvid)
